@@ -14,6 +14,7 @@ function Hero() {
 					handsomely lookout marooned brigantine knave. Buccaneer gangway
 					jack rum loot spyglass line Jack Tar fore gaff. 
 				</p>
+				{/* we use asChild below because the button is being used as a wrapper for the Link component.  If it was a submit button or normal click button we wouldn't have to do this. */}
 				<Button asChild size="lg" className="mt-10">
 					<Link href="/products">Our Products</Link>
 				</Button>
