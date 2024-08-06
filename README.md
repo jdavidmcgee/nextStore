@@ -3506,9 +3506,16 @@ model Review {
 
 ```sh
 npx prisma db push
+npx prisma studio
+
+- commit to github for deployment
+- select source control icon on left side of screen
+- type a message
+- select commit 
+- then select 'push' in the '...'
 ```
 
-- restar the server
+- restart the server
 
 ### Review Components and Actions
 
