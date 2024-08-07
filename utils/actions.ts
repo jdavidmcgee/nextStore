@@ -3,7 +3,12 @@
 import db from '@/utils/db';
 import { currentUser, auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { imageSchema, productSchema, validateWithZodSchema } from './schemas';
+import {
+	imageSchema,
+	productSchema,
+	validateWithZodSchema,
+	reviewSchema,
+} from './schemas';
 import { deleteImage, uploadImage } from './supabase';
 import { revalidatePath } from 'next/cache';
 
@@ -184,7 +189,6 @@ export const updateProductAction = async (
 	}
 };
 
-
 // since we have a hidden input field we don't need to use the bind method to pass the product id to the this function as well...it is already in the form data.  we'll just need to grab it
 
 export const updateProductImageAction = async (
@@ -215,6 +219,7 @@ export const updateProductImageAction = async (
 	}
 };
 
+// Favorite actions
 
 // this action below is for the favorite button. We'll need to get the user and the product id to check if the product is already in the user's favorite list
 export const fetchFavoriteId = async ({ productId }: { productId: string }) => {
@@ -230,8 +235,6 @@ export const fetchFavoriteId = async ({ productId }: { productId: string }) => {
 	});
 	return favorite?.id || null;
 };
-
-
 
 export const toggleFavoriteAction = async (prevState: {
 	productId: string;
@@ -265,7 +268,6 @@ export const toggleFavoriteAction = async (prevState: {
 	}
 };
 
-
 export const fetchUserFavorites = async () => {
 	const user = await getAuthUser();
 	const favorites = await db.favorite.findMany({
@@ -278,4 +280,114 @@ export const fetchUserFavorites = async () => {
 		},
 	});
 	return favorites;
+};
+
+// Review actions
+
+export const createReviewAction = async (
+	prevState: any,
+	formData: FormData
+) => {
+	const user = await getAuthUser(); // only authenticated users can leave a review (not admin users only)
+	try {
+		const rawData = Object.fromEntries(formData);
+
+		const validatedFields = validateWithZodSchema(reviewSchema, rawData);
+
+		await db.review.create({
+			data: {
+				...validatedFields, // this is the validated form data an object...so we can spread it here
+				clerkId: user.id, // we are adding the user id to the review
+			},
+		});
+		revalidatePath(`/products/${validatedFields.productId}`); // to see the latest changes immediately
+		return { message: 'Review submitted successfully' };
+	} catch (error) {
+		return renderError(error);
+	}
+};
+
+export const fetchProductReviews = async (productId: string) => {
+	const reviews = await db.review.findMany({
+		where: {
+			productId,
+		},
+		orderBy: {
+			createdAt: 'desc',
+		},
+	});
+	return reviews;
+};
+
+export const fetchProductRating = async (productId: string) => {
+	const result = await db.review.groupBy({
+		by: ['productId'],
+		_avg: {
+			rating: true,
+		},
+		_count: {
+			rating: true,
+		},
+		where: {
+			productId,
+		},
+	});
+
+	// empty array if no reviews
+	return {
+		rating: result[0]?._avg.rating?.toFixed(1) ?? 0,
+		count: result[0]?._count.rating ?? 0,
+	};
+};
+
+export const fetchProductReviewsByUser = async () => {
+	const user = await getAuthUser();
+	const reviews = await db.review.findMany({
+		where: {
+			clerkId: user.id,
+		},
+		select: {
+			id: true,
+			rating: true,
+			comment: true,
+			product: {
+				select: {
+					image: true,
+					name: true,
+				},
+			},
+		},
+	});
+	return reviews;
+};
+
+
+// using the bind method here...we are passing the reviewId to the function
+export const deleteReviewAction = async (prevState: { reviewId: string }) => {
+	const { reviewId } = prevState;
+	const user = await getAuthUser();
+
+	try {
+		await db.review.delete({
+			where: {
+				id: reviewId,
+				clerkId: user.id,
+			},
+		});
+
+		revalidatePath('/reviews');
+		return { message: 'Review deleted successfully' };
+	} catch (error) {
+		return renderError(error);
+	}
+};
+
+// the result we are looking for is 'null' if the action returns a value that means the user has already left a review for the product.  If the result is 'null', it means the user has not left a review for the product yet.
+export const findExistingReview = async (userId: string, productId: string) => {
+	return db.review.findFirst({
+		where: {
+			clerkId: userId,
+			productId,
+		},
+	});
 };

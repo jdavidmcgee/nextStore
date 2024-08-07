@@ -70,3 +70,28 @@ function validateImageFile() {
 			);
 		}, 'File must be an image');
 }
+
+
+// this is a schema for reviews.  It is similar to the product schema but it has a few differences.  The rating is a number between 1 and 5 and the comment is a string between 10 and 500 characters.  We are also using the 'refine' method to add custom error messages if the data does not meet the requirements.
+
+export const reviewSchema = z.object({
+	productId: z.string().refine(value => value !== '', {
+		message: 'Product ID cannot be empty',
+	}),
+	authorName: z.string().refine(value => value !== '', {
+		message: 'Author name cannot be empty',
+	}),
+	authorImageUrl: z.string().refine(value => value !== '', {
+		message: 'Author image URL cannot be empty',
+	}),
+	// we are getting the rating as a string and then coercing it to a number.  We are then checking if it is an integer and between 1 and 5
+	rating: z.coerce
+		.number()
+		.int()
+		.min(1, { message: 'Rating must be at least 1' })
+		.max(5, { message: 'Rating must be at most 5' }),
+	comment: z
+		.string()
+		.min(10, { message: 'Comment must be at least 10 characters long' })
+		.max(1000, { message: 'Comment must be at most 1000 characters long' }),
+});
