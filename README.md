@@ -4956,6 +4956,7 @@ export const fetchAdminOrders = async () => {
 ### Orders Page
 
 - utils/format.ts
+- a format date helper function
 
 ```ts
 export const formatDate = (date: Date) => {
@@ -5240,7 +5241,8 @@ export default function CheckoutPage() {
 
 ### API - Payment Route
 
-- create api/payment/route.ts
+- create app/api/payment/route.ts
+- create app/api/confirm/route.ts
 
 ```ts
 import Stripe from 'stripe';
